@@ -23,6 +23,41 @@ app.listen(PORT, () => {
 });
 
 
+
+// 검색 알고리즘 ( Fuse.js )
+const Fuse = require('fuse.js');
+const songs = require('./songs.json');
+
+// 문자열 정규화 (검색 정확도 상승)
+const normalize = (str) =>
+  str.toLowerCase().replace(/[^a-z0-9가-힣]/g, '');
+
+// 데이터 전처리
+const normalizedSongs = songs.map(song => ({
+  ...song,
+  _searchTitle: normalize(song.title)
+}));
+
+// Fuse 인스턴스 생성
+const fuse = new Fuse(normalizedSongs, {
+  keys: ['_searchTitle'],
+  threshold: 0.4,       // 검색 수치 설정 (낮을수록 정확)
+  includeScore: true,
+  ignoreLocation: true,
+});
+
+const searchSong = (query) => {
+  const q = normalize(query);
+
+  const results = fuse.search(q);
+
+  return results.map(r => ({
+    ...r.item,
+    score: Number(r.score.toFixed(4))
+  }));
+};
+
+
 // 노래 데이터
 const songs = require('./songs.json');
 
@@ -30,17 +65,23 @@ app.get('/songs', (req, res) => {
   res.json(songs);
 });
 
-app.get('/song/:title', (req, res) => {
-  const title = req.params.title;
+app.get('/songs/:title', (req, res) => {
+  const query = req.params.title;
 
-  const song = songs.find(s =>
-    s.title.toLowerCase() === title.toLowerCase()
-  );
+  const results = searchSong(query);
 
-  if (!song) return res.status(404).json({ error: 'not found' });
+  if (!results.length) {
+    return res.status(404).json({ error: 'No songs found' });
+  }
 
-  res.json(song);
+  res.json({
+    query,
+    bestMatch: results[0],
+    top5: results.slice(0, 5) // 디버깅 ( 상위 5개 결과 return )
+  });
 });
+
+
 
 // 현재 재생 중인 노래
 let currentSong = null;
