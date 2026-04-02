@@ -11,12 +11,12 @@ paths:
         '200':
           description: 성공
 
-  /song/{title}:
+  /songs/{title}:
     get:
-      summary: 특정 곡 조회
+      summary: 제목으로 곡 검색
       parameters:
-        - name: title
-          in: path
+        - in: path
+          name: title
           required: true
           schema:
             type: string

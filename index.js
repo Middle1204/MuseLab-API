@@ -57,10 +57,6 @@ const searchSong = (query) => {
   }));
 };
 
-
-// 노래 데이터
-const songs = require('./songs.json');
-
 app.get('/songs', (req, res) => {
   res.json(songs);
 });
