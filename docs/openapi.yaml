@@ -1,0 +1,48 @@
+openapi: 3.0.0
+info:
+  title: MuseLab API
+  version: 1.0.0
+
+paths:
+  /songs:
+    get:
+      summary: 전체 곡 목록 조회
+      responses:
+        '200':
+          description: 성공
+
+  /song/{title}:
+    get:
+      summary: 특정 곡 조회
+      parameters:
+        - name: title
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: 성공
+
+  /current-song:
+    get:
+      summary: 현재 재생 중인 곡 조회
+      responses:
+        '200':
+          description: 성공
+    post:
+      summary: 현재 재생 중인 곡 설정
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                title:
+                  type: string
+              responses:
+                '200':
+                  description: 성공   
+
+      
