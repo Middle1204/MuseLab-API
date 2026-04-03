@@ -49,13 +49,37 @@ const fuse = new Fuse(normalizedSongs, {
 const searchSong = (query) => {
   const q = normalize(query);
 
+  if (!isMeaningfulQuery(q)) return [];
+
+  const direct = normalizedSongs.filter(song =>
+    song._searchTitle.includes(q)
+  );
+
+  if (direct.length) {
+    return direct.map(song => ({ ...song, score: 1 }));
+  }
+
   const results = fuse.search(q);
 
-  return results.map(r => ({
-    ...r.item,
-    score: Number(r.score.toFixed(4))
-  }));
+  return results
+    .map(r => ({
+      ...r.item,
+      score: 1 - r.score
+    }))
+    .filter(r => r.score >= 0.5);
 };
+
+const isMeaningfulQuery = (q) => {
+  const cleaned = q.replace(/\s/g, '');
+
+  if (/^(.)\1+$/.test(cleaned)) return false;
+
+  const uniqueChars = new Set(cleaned).size;
+
+  return uniqueChars >= 2;
+};
+
+
 
 app.get('/songs', (req, res) => {
   res.json(songs);
