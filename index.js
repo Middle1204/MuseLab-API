@@ -18,12 +18,6 @@ app.get('/', (req, res) => {
   res.send('서버 작동 테스트');
 });
 
-app.listen(PORT, () => {
-  console.log(`Server running on http://localhost:${PORT}`);
-});
-
-
-
 // 검색 알고리즘 ( Fuse.js )
 const Fuse = require('fuse.js');
 const songs = require('./songs.json');
@@ -46,6 +40,16 @@ const fuse = new Fuse(normalizedSongs, {
   ignoreLocation: true,
 });
 
+const isMeaningfulQuery = (q) => {
+  const cleaned = q.replace(/\s/g, '');
+
+  if (/^(.)\1+$/.test(cleaned)) return false;
+
+  const uniqueChars = new Set(cleaned).size;
+
+  return uniqueChars >= 2;
+};
+
 const searchSong = (query) => {
   const q = normalize(query);
 
@@ -56,7 +60,9 @@ const searchSong = (query) => {
   );
 
   if (direct.length) {
-    return direct.map(song => ({ ...song, score: 1 }));
+    return direct
+      .map(song => ({ ...song, score: 1 }))
+      .sort((a, b) => b.level - a.level);
   }
 
   const results = fuse.search(q);
@@ -67,16 +73,6 @@ const searchSong = (query) => {
       score: 1 - r.score
     }))
     .filter(r => r.score >= 0.5);
-};
-
-const isMeaningfulQuery = (q) => {
-  const cleaned = q.replace(/\s/g, '');
-
-  if (/^(.)\1+$/.test(cleaned)) return false;
-
-  const uniqueChars = new Set(cleaned).size;
-
-  return uniqueChars >= 2;
 };
 
 
@@ -94,10 +90,18 @@ app.get('/songs/:title', (req, res) => {
     return res.status(404).json({ error: 'No songs found' });
   }
 
+  const bestMatch = results
+    .filter(r => r.score > 0.7)
+    .sort((a, b) => b.score - a.score || b.level - a.level)
+    .slice(0, 50);
+
+  if (!bestMatch.length) {
+    return res.status(404).json({ error: 'No songs found' });
+  }
+
   res.json({
     query,
-    bestMatch: results[0],
-    top5: results.slice(0, 5) // 디버깅 ( 상위 5개 결과 return )
+    bestMatch,
   });
 });
 
@@ -107,10 +111,37 @@ app.get('/songs/:title', (req, res) => {
 let currentSong = null;
 
 app.post('/current-song', (req, res) => {
-  currentSong = req.body;
-  res.json({ success: true });
+  const { title, difficulty } = req.body;
+
+  const results = searchSong(title);
+
+  if (!results.length) {
+    return res.status(404).json({ error: 'Song not found' });
+  }
+
+  const best = results[0];
+
+  res.json({
+    input: {
+      title,
+      difficulty
+    },
+    result: {
+      title: best.title,
+      composer: best.composer,
+      level: best.level,
+      notes: best.notes,
+      bpm: best.bpm,
+      difficulty: best.course, 
+      score: best.score // 디버깅 (검색 정확도 수치)
+    }
+  });
 });
 
 app.get('/current-song', (req, res) => {
   res.json(currentSong);
+});
+
+app.listen(PORT, () => {
+  console.log(`Server running on http://localhost:${PORT}`);
 });
