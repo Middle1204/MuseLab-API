@@ -78,16 +78,73 @@ const searchSong = (query) => {
 
 
 app.get('/songs', (req, res) => {
+  const { levelMin, levelMax, course } = req.query;
+  const hasFilter = levelMin !== undefined || levelMax !== undefined || course !== undefined;
+
+  if (hasFilter) {
+    let filtered = songs;
+
+    if (levelMin !== undefined) {
+      const min = parseFloat(levelMin);
+      if (!isNaN(min)) filtered = filtered.filter(s => s.level >= min);
+    }
+    if (levelMax !== undefined) {
+      const max = parseFloat(levelMax);
+      if (!isNaN(max)) filtered = filtered.filter(s => s.level <= max);
+    }
+    if (course !== undefined) {
+      filtered = filtered.filter(s => s.course === course.toLowerCase());
+    }
+
+    if (!filtered.length) {
+      return res.status(404).json({ error: 'No songs found' });
+    }
+
+    return res.json(filtered.sort((a, b) => a.level - b.level));
+  }
+
   res.json(songs);
 });
 
 app.get('/songs/:title', (req, res) => {
   const query = req.params.title;
+  const { levelMin, levelMax, course } = req.query;
+  const hasFilter = levelMin !== undefined || levelMax !== undefined || course !== undefined;
 
   const results = searchSong(query);
 
   if (!results.length) {
     return res.status(404).json({ error: 'No songs found' });
+  }
+
+  if (hasFilter) {
+    let filtered = results;
+
+    if (levelMin !== undefined) {
+      const min = parseFloat(levelMin);
+      if (!isNaN(min)) filtered = filtered.filter(r => r.level >= min);
+    }
+    if (levelMax !== undefined) {
+      const max = parseFloat(levelMax);
+      if (!isNaN(max)) filtered = filtered.filter(r => r.level <= max);
+    }
+    if (course !== undefined) {
+      filtered = filtered.filter(r => r.course === course.toLowerCase());
+    }
+
+    if (!filtered.length) {
+      return res.status(404).json({ error: 'No songs found' });
+    }
+
+    return res.json({
+      query,
+      filters: {
+        ...(levelMin !== undefined && { levelMin: parseFloat(levelMin) }),
+        ...(levelMax !== undefined && { levelMax: parseFloat(levelMax) }),
+        ...(course !== undefined && { course }),
+      },
+      results: filtered.sort((a, b) => a.level - b.level),
+    });
   }
 
   const bestMatch = results
